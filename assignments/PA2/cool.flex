@@ -7,6 +7,7 @@
  *  output, so headers and global definitions are placed here to be visible
  * to the code in the file.  Don't remove anything that was here initially
  */
+%option noyywrap
 %{
 #include <cool-parse.h>
 #include <stringtab.h>
@@ -49,7 +50,29 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
+/* Keywords */
+CLASS           [cC][lL][aA][sS]{2}
+ELSE            [eE][lL][sS][eE]
+FALSE           f[aA][lL][sS][eE]
+FI              (?i:fi)
+IF              (?i:if)
+IN              (?i:in)
+INHERITS        (?i:inherits)
+LET             (?i:let)
+LOOP            (?i:loop)
+POOL            (?i:pool)
+THEN            (?i:then)
+WHILE           (?i:while)
+CASE            (?i:case)
+ESAC            (?i:esac)
+OF              (?i:of)
+NEW             (?i:new)
+ISVOID          (?i:isvoid)
+NOT             (?i:not)
+TRUE            t[rR][uU][eE]
+
 DARROW          =>
+
 
 %%
 
@@ -67,6 +90,23 @@ DARROW          =>
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
+{CLASS}     { return (CLASS); }
+{ELSE}     { return (ELSE); }
+{FI}     { return (FI); }
+{IF}     { return (IF); }
+{IN}     { return (IN); }
+{INHERITS}     { return (INHERITS); }
+{LET}     { return (LET); }
+{LOOP}     { return (LOOP); }
+{POOL}     { return (POOL); }
+{THEN}     { return (THEN); }
+{WHILE}     { return (WHILE); }
+{CASE}     { return (CASE); }
+{ESAC}     { return (ESAC); }
+{OF}     { return (OF); }
+{NEW}     { return (NEW); }
+{ISVOID}     { return (ISVOID); }
+{NOT}     { return (NOT); }
 
 
  /*
