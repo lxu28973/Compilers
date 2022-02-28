@@ -135,10 +135,26 @@
     %type <class_> class
     
     /* You will want to change the following line. */
-    %type <features> dummy_feature_list
+    %type <features> feature_list
+    %type <feature> feature
+    %type <formals> formal_list
+    %type <formal> formal
+    %type <expressions> expr_list_star
+    %type <expressions> expr_list_plus
+    %type <expressions> expr_list_let
+    %type <expressions> expr_list_case
+    %type <expression> expr
     
     /* Precedence declarations go here. */
-    
+    %right ASSIGN
+    %precedence NOT
+    %nonassoc '<' '=' LE
+    %left '+' '-'
+    %left '*' '/'
+    %precedence ISVOID
+    %precedence '~'
+    %precedence '@'
+    %precedence '.'
     
     %%
     /* 
@@ -157,16 +173,64 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
+    class	: CLASS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
-    {  $$ = nil_Features(); }
+    feature_list:		/* empty */
+    { $$ = nil_Features(); }
+    | feature ';' feature_list
+    { $$ = append_Features(single_Features($1), $3); }
+    ;
+
+    feature: OBJCECTID '(' ')' ':' TYPEID '{' expr '}'
+    { $$ = method($1, nil_Formals(), $5, $7); }
+    | OBJECTID '(' formal formal_list ')' ':' TYPEID '{' expr '}'
+    { $$ = method($1, append_Formals(single_Formals($3), $4), $7, $9); }
+    | OBJECTID ':' TYPEID
+    { $$ = attr($1, $3, no_expr); }
+    | OBJECTID ':' TYPEID ASSIGN expr
+    { $$ = attr($1, $3, $5); }
+    ;
+
+    formal_list: 
+    { $$ = nil_Formals(); }
+    | ',' formal formal_list
+    { $$ = append_Formals(single_Formals($2), $3); }
+    ;
+
+    formal: OBJCECTID ':' TYPEID
+    { $$ = formal($1, $3); }
+    ;
+
+    expr_list_star:
+    { $$ = nil_Expressions(); }
+    | ',' expr expr_list_star
+    { $$ = append_Expressions(single_Expressions($2), $3); }
+    ;
+
+    expr_list_plus: expr ';'
+    { $$ = single_Expressions($1); }
+    | expr ';' expr_list_plus
+    { $$ = append_Expressions(single_Expressions($1), $3); }
+    ;
+
+    expr: OBJCECTID ASSIGN expr
+    { $$ = assign($1, $3); }
+    | expr '.' OBJCECTID '(' ')' 
+    { $$ = dispatch($1, $3, nil_Expressions()); }
+    | expr '.' OBJCECTID '(' expr expr_list_star ')'
+    { $$ = dispatch($1, $3, append_Expressions(single_Expressions($5), $6); }
+    | expr '@' TYPEID '.' OBJCECTID '(' ')' 
+    { $$ = static_dispatch($1, $3, $5, nil_Expressions()); }
+    | expr '@' TYPEID '.' OBJCECTID '(' expr expr_list_star ')'
+    { $$ = static_dispatch($1, $3, $5, append_Expressions(single_Expressions($5), $6); }
+
+
     
     
     /* end of grammar */
