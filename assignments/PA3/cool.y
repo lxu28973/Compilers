@@ -178,6 +178,8 @@
     stringtable.add_string(curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+    | error ';'
+    { yyerrok; }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -195,6 +197,8 @@
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr
     { $$ = attr($1, $3, $5); }
+    | error ';'
+    { yyerrok; }
     ;
 
     formal_list: 
@@ -217,6 +221,8 @@
     { $$ = single_Expressions($1); }
     | expr ';' expr_list_plus
     { $$ = append_Expressions(single_Expressions($1), $3); }
+    | error ';'
+    { yyerrok; }
     ;
 
     expr_list_let: OBJECTID ':' TYPEID IN expr
@@ -227,6 +233,10 @@
     { $$ = let($1, $3, no_expr(), $5); }
     | OBJECTID ':' TYPEID ASSIGN expr ',' expr_list_let
     { $$ = let($1, $3, $5, $7); }
+    | error expr_list_let
+    { yyerrok; }
+    | error IN expr
+    { yyerrok; }
     ;
 
     expr_list_case: OBJECTID ':' TYPEID DARROW expr ';'
