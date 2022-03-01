@@ -141,8 +141,8 @@
     %type <formal> formal
     %type <expressions> expr_list_star
     %type <expressions> expr_list_plus
-    %type <expressions> expr_list_let
-    %type <expressions> expr_list_case
+    %type <expression> expr_list_let
+    %type <cases> expr_list_case
     %type <expression> expr
     
     /* Precedence declarations go here. */
@@ -187,12 +187,12 @@
     { $$ = append_Features(single_Features($1), $3); }
     ;
 
-    feature: OBJCECTID '(' ')' ':' TYPEID '{' expr '}'
+    feature: OBJECTID '(' ')' ':' TYPEID '{' expr '}'
     { $$ = method($1, nil_Formals(), $5, $7); }
     | OBJECTID '(' formal formal_list ')' ':' TYPEID '{' expr '}'
     { $$ = method($1, append_Formals(single_Formals($3), $4), $7, $9); }
     | OBJECTID ':' TYPEID
-    { $$ = attr($1, $3, no_expr); }
+    { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr
     { $$ = attr($1, $3, $5); }
     ;
@@ -203,7 +203,7 @@
     { $$ = append_Formals(single_Formals($2), $3); }
     ;
 
-    formal: OBJCECTID ':' TYPEID
+    formal: OBJECTID ':' TYPEID
     { $$ = formal($1, $3); }
     ;
 
@@ -219,21 +219,81 @@
     { $$ = append_Expressions(single_Expressions($1), $3); }
     ;
 
-    expr: OBJCECTID ASSIGN expr
+    expr_list_let: OBJECTID ':' TYPEID IN expr
+    { $$ = let($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ASSIGN expr IN expr
+    { $$ = let($1, $3, $5, $7); }
+    | OBJECTID ':' TYPEID ',' expr_list_let
+    { $$ = let($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ASSIGN expr ',' expr_list_let
+    { $$ = let($1, $3, $5, $7); }
+    ;
+
+    expr_list_case: OBJECTID ':' TYPEID DARROW expr ';'
+    { $$ = single_Cases(branch($1, $3, $5)); }
+    | OBJECTID ':' TYPEID DARROW expr ';' expr_list_case
+    { $$ = append_Cases(single_Cases(branch($1, $3, $5)), $7); }
+    ;
+
+    expr: OBJECTID ASSIGN expr
     { $$ = assign($1, $3); }
-    | expr '.' OBJCECTID '(' ')' 
+    | expr '.' OBJECTID '(' ')' 
     { $$ = dispatch($1, $3, nil_Expressions()); }
-    | expr '.' OBJCECTID '(' expr expr_list_star ')'
-    { $$ = dispatch($1, $3, append_Expressions(single_Expressions($5), $6); }
-    | expr '@' TYPEID '.' OBJCECTID '(' ')' 
+    | expr '.' OBJECTID '(' expr expr_list_star ')'
+    { $$ = dispatch($1, $3, append_Expressions(single_Expressions($5), $6)); }
+    | expr '@' TYPEID '.' OBJECTID '(' ')' 
     { $$ = static_dispatch($1, $3, $5, nil_Expressions()); }
-    | expr '@' TYPEID '.' OBJCECTID '(' expr expr_list_star ')'
-    { $$ = static_dispatch($1, $3, $5, append_Expressions(single_Expressions($5), $6); }
+    | expr '@' TYPEID '.' OBJECTID '(' expr expr_list_star ')'
+    { $$ = static_dispatch($1, $3, $5, append_Expressions(single_Expressions($7), $8)); }
+    | OBJECTID '(' ')' 
+    { $$ = dispatch(object(idtable.add_string("self")), $1, nil_Expressions()); }
+    | OBJECTID '(' expr expr_list_star ')'
+    { $$ = dispatch(object(idtable.add_string("self")), $1, append_Expressions(single_Expressions($3), $4)); }
+    | IF expr THEN expr ELSE expr FI 
+    { $$ = cond($2, $4, $6); } 
+    | WHILE expr LOOP expr POOL 
+    { $$ = loop($2, $4); }
+    | '{' expr_list_plus '}' 
+    { $$ = block($2); }
+    | LET expr_list_let 
+    { $$ = $2; }
+    | CASE expr OF expr_list_case ESAC 
+    { $$ = typcase($2, $4); }
+    | NEW TYPEID 
+    { $$ = new_($2); }
+    | ISVOID expr 
+    { $$ = isvoid($2); }
+    | expr '+' expr 
+    { $$ = plus($1, $3); }
+    | expr '-' expr 
+    { $$ = sub($1, $3); }
+    | expr '*' expr 
+    { $$ = mul($1, $3); }
+    | expr '/' expr 
+    { $$ = divide($1, $3); }
+    | '~' expr 
+    { $$ = neg($2); }
+    | expr '<' expr 
+    { $$ = lt($1, $3); }
+    | expr LE expr 
+    { $$ = leq($1, $3); }
+    | expr '=' expr 
+    { $$ = eq($1, $3); }
+    | NOT expr 
+    { $$ = comp($2); }
+    | '(' expr ')' 
+    { $$ = $2; }
+    | OBJECTID 
+    { $$ = object($1); }
+    | INT_CONST 
+    { $$ = int_const($1); }
+    | STR_CONST 
+    { $$ = string_const($1); }
+    | BOOL_CONST 
+    { $$ = bool_const($1); }
+    ;
 
-
-    
-    
-    /* end of grammar */
+  /* end of grammar */
     %%
     
     /* This function is called automatically when Bison detects a parse error. */
