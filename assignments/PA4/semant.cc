@@ -188,6 +188,65 @@ void ClassTable::install_basic_classes() {
 						      Str, 
 						      no_expr()))),
 	       filename);
+
+    class_entries[Object] = Object_class;
+    class_entries[IO] = IO_class;
+    class_entries[Int] = Int_class;
+    class_entries[Bool] = Bool_class;
+    class_entries[Str] = Str_class;
+}
+
+Class_ ClassTable::class_lookup(Symbol key)
+{
+    return class_entries[key];
+}
+
+void ClassTable::install_custom_classes(Classes classes)
+{
+    for (int i = classes->first(); classes->more(i); i = classes->next(i))
+        install_custom_class(classes->nth(i));
+}
+
+void ClassTable::install_custom_class(Class_ class_i)
+{
+    Symbol class_name = class_i->get_name();
+    if (class_name == Int    ||
+        class_name == Bool   ||
+        class_name == Str    ||
+        class_name == Object ||
+        class_name == SELF_TYPE
+    ){
+        semant_error(class_i) << "Redefinition of " << class_name << " is not allowed. \n";
+    }
+    else if (class_entries.find(class_name) != class_entries.end())
+    {
+        semant_error(class_i) << "Class " << class_name << " was previously defined.\n";
+    }
+    else
+        class_entries[class_name] = class_i;
+}
+
+void ClassTable::check_inheritant_chain(Class_ class_i, std::map<Symbol, Class_> chain)
+{
+    Symbol parent_class_name = class_i->get_parent();
+    Symbol current_class_name = class_i->get_name();
+    if (current_class_name == Object) {
+        chain[current_class_name] = class_i;
+    }
+    else if (parent_class_name == Int || parent_class_name == Bool || parent_class_name == Str || parent_class_name == SELF_TYPE) {
+        semant_error(class_i) << "Class " << current_class_name << " cannot inherit class " << parent_class_name << ".\n";
+    }
+    else if (chain.find(current_class_name) != chain.end()) {
+        semant_error(class_i) << "Class " << current_class_name << " is involved in an inheritance cycle.\n";
+    }
+    else if (class_entries.find(parent_class_name) == class_entries.end()) {
+        semant_error(class_i) << "Class " << current_class_name << " inherits from class " << parent_class_name 
+        << " but class " << parent_class_name << " is not defined.\n";
+    }
+    else {
+        chain[current_class_name] = class_i;
+        check_inheritant_chain(class_entries[parent_class_name], chain);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////
