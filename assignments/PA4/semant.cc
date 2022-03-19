@@ -10,6 +10,8 @@
 extern int semant_debug;
 extern char *curr_filename;
 
+ClassTable *classtable;
+
 //////////////////////////////////////////////////////////////////////
 //
 // Symbols
@@ -281,7 +283,64 @@ ostream& ClassTable::semant_error()
     return error_stream;
 } 
 
+std::map<Symbol, method_class*> get_class_methods(Class_ class_definition) {
+    std::map<Symbol, method_class*> class_methods;
+    Symbol class_name = class_definition->get_name();
+    Features class_features = class_definition->get_features();
 
+    for (int i = class_features->first(); class_features->more(i); i = class_features->next(i)) 
+    {
+        Feature feature = class_features->nth(i);
+
+        if (!feature->is_method())
+            continue;
+
+        method_class* method = static_cast<method_class*>(feature);
+        Symbol method_name = method->get_name();
+        
+        if (class_methods.find(method_name) != class_methods.end())
+        {
+            ostream& error_stream = classtable->semant_error(class_definition);
+            error_stream << "The method :";
+            method_name->print(error_stream);
+            error_stream << " has already been defined!\n";
+        }
+        else
+        {
+            class_methods[method_name] = method;
+        }
+    }
+    return class_methods;
+}
+
+method_class* get_class_method(Symbol class_name, Symbol method_name) {
+    std::map<Symbol, method_class*> methods = get_class_methods(classtable->class_lookup(class_name));
+
+    if (methods.find(method_name) == methods.end())
+        return nullptr;
+
+    return methods[method_name];
+}
+
+std::map<Symbol, attr_class*> get_class_attributes(Class_ class_definition) {
+    std::map<Symbol, attr_class*> class_attrs;
+    Symbol class_name = class_definition->get_name();
+    Features class_features = class_definition->get_features();
+
+    for (int i = class_features->first(); class_features->more(i); i = class_features->next(i)) 
+    {
+        Feature feature = class_features->nth(i);
+
+        if (!feature->is_attr())
+            continue;
+
+        attr_class* attr = static_cast<attr_class*>(feature);
+        Symbol attr_name = attr->get_name();
+        class_attrs[attr_name] = attr;
+    }
+
+    return class_attrs;
+}
 
 /*   This is the entry point to the semantic checker.
 
@@ -301,7 +360,7 @@ void program_class::semant()
     initialize_constants();
 
     /* ClassTable constructor may do some semantic analysis */
-    ClassTable *classtable = new ClassTable(classes);
+    classtable = new ClassTable(classes);
 
     /* some semantic analysis code may go here */
 
